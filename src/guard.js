@@ -6,7 +6,10 @@ import type { Annotation } from 'debrief';
 import type { Decoder, Guard } from './types';
 
 type Options = {|
-    style?: 'inline' | 'simple', // `inline` by default
+    style?:
+        | 'inline' // `inline` is the default
+        | 'simple' // `simple` does not echo back the input object in error messages
+        | 'noop', // `noop` performs no runtime checking (useful in production)
 |};
 
 /**
@@ -16,9 +19,19 @@ function serializeSimple(annotation: Annotation) {
     return summarize(annotation).join('\n');
 }
 
+function noguard<T>(decoder: Decoder<T>): Guard<T> {
+    return (blob: mixed) =>
+        // $FlowFixMe - we take full responsibility
+        ((blob: any): T);
+}
+
 export function guard<T>(decoder: Decoder<T>, options?: Options): Guard<T> {
     const o = options || {};
     const style = o.style || 'inline';
+
+    if (style === 'noop') {
+        return noguard(decoder);
+    }
 
     const serializer =
         style === 'inline'
